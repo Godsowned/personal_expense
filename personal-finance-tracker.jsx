@@ -63,7 +63,7 @@ async function saveToSupabase(payload) {
 const EXPENSE_CATS = ['Transportation', 'Food', 'Airtime/Data', 'Rent', 'Utilities', 'Giving/Ministry', 'Business', 'Savings', 'Debt Repayment', 'Gifts', 'Miscellaneous'];
 const INCOME_CATS = ['Salary', 'Project Payment', 'Gift Received', 'Contribution', 'Refund', 'Other Income'];
 
-const EMPTY_DATA = { transactions: [], budgets: [], debts: [], recurringExpenses: [], expectedIncome: [] };
+const EMPTY_DATA = { transactions: [], budgets: [], debts: [], recurringExpenses: [], expectedIncome: [], advisorChats: [], advisorPlans: [] };
 
 const SYSTEM_PROMPT = `You are a supportive personal finance and money-psychology coach for a Nigerian Naira (NGN) household ledger.
 Voice rules: warm, specific, never shaming, never use clinical or diagnostic mental-health language. Describe patterns in the actual numbers given, do not invent figures.
@@ -79,6 +79,27 @@ Write a concise report (around 300-400 words) with this exact structure, using t
 ## Long-Term Financial Growth Suggestions
 
 Use short bullet points (lines starting with "- ") under each heading. Reference real NGN figures from the data provided. Keep the whole report tight enough to fit the structure above without padding.`;
+
+const ADVISOR_SYSTEM_PROMPT = `You are a warm, knowledgeable personal finance advisor for someone in Nigeria using NGN (Nigerian Naira).
+Your role: 
+- Review and discuss their financial performance based on real transaction data you're shown
+- Research relevant financial topics (market trends, investment strategies, saving methods, debt management) online if asked
+- Link findings back to their specific financial situation
+- Ask clarifying questions to better understand their goals and constraints
+- Help them create actionable financial plans
+- Remember previous parts of the conversation and build upon them
+- Never shame them; be encouraging and specific with numbers
+
+You are NOT a licensed financial advisor — for major decisions (loans, investments, restructuring debt), recommend they consult a licensed professional.
+
+When discussing their finances, always:
+1. Reference real figures from their ledger (transactions, debts, budgets)
+2. Ask follow-up questions to clarify their goals
+3. Suggest practical, small steps they can take now
+4. Be specific and honest about trade-offs
+5. Maintain context from earlier in the conversation
+
+When they ask to research topics, share what you find and explicitly link it to their situation.`;
 
 const PARSER_PROMPT = `You convert one short, free-text personal-finance note (Nigerian Naira) into a single JSON action. Output ONLY raw JSON, no markdown fences, no commentary.
 
@@ -205,6 +226,8 @@ export default function App() {
           debts: payload.debts || [],
           recurringExpenses: payload.recurringExpenses || [],
           expectedIncome: payload.expectedIncome || [],
+          advisorChats: payload.advisorChats || [],
+          advisorPlans: payload.advisorPlans || [],
         });
       } else if (succeeded) {
         setDbStatus('connected');
@@ -257,6 +280,8 @@ export default function App() {
           debts: parsed.debts || [],
           recurringExpenses: parsed.recurringExpenses || [],
           expectedIncome: parsed.expectedIncome || [],
+          advisorChats: parsed.advisorChats || [],
+          advisorPlans: parsed.advisorPlans || [],
         };
         setPendingImport(next);
         setImportMessage('');
@@ -280,6 +305,35 @@ export default function App() {
   /* ---- mutations ---- */
   const addTransaction = (tx) => persist({ ...data, transactions: [{ ...tx, id: uid() }, ...data.transactions] });
   const deleteTransaction = (id) => persist({ ...data, transactions: data.transactions.filter(t => t.id !== id) });
+
+  const addAdvisorChat = (chatId, initialMessage) => {
+    const newChat = { id: chatId, createdAt: new Date().toISOString(), messages: [{ role: 'user', content: initialMessage, timestamp: new Date().toISOString() }] };
+    persist({ ...data, advisorChats: [newChat, ...data.advisorChats] });
+    return chatId;
+  };
+  
+  const addAdvisorMessage = (chatId, message) => {
+    const chats = data.advisorChats.map(c => {
+      if (c.id === chatId) {
+        return { ...c, messages: [...c.messages, { role: message.role, content: message.content, timestamp: new Date().toISOString() }] };
+      }
+      return c;
+    });
+    persist({ ...data, advisorChats: chats });
+  };
+
+  const addAdvisorPlan = (plan) => {
+    persist({ ...data, advisorPlans: [{ ...plan, id: uid(), createdAt: new Date().toISOString(), status: 'active' }, ...data.advisorPlans] });
+  };
+
+  const updateAdvisorPlan = (planId, updates) => {
+    const plans = data.advisorPlans.map(p => (p.id === planId ? { ...p, ...updates } : p));
+    persist({ ...data, advisorPlans: plans });
+  };
+
+  const deleteAdvisorPlan = (planId) => {
+    persist({ ...data, advisorPlans: data.advisorPlans.filter(p => p.id !== planId) });
+  };
 
   const upsertBudget = (category, monthlyLimit) => {
     const exists = data.budgets.some(b => b.category === category);
@@ -569,6 +623,9 @@ export default function App() {
         .lf-report-p { font-size: 14px; line-height: 1.5; margin: 6px 0; }
         .lf-debt-grid { display: grid; grid-template-columns: 1fr; gap: 16px; }
         @media (min-width: 760px) { .lf-debt-grid { grid-template-columns: 1fr 1fr; } }
+        textarea.lf-input { resize: vertical; }
+        .lf-advisor-layout { display: grid; grid-template-columns: minmax(280px, 25%) 1fr; gap: 20px; min-height: calc(100vh - 300px); }
+        @media (max-width: 900px) { .lf-advisor-layout { grid-template-columns: 1fr; } }
       `}</style>
 
       {/* header */}
@@ -637,9 +694,9 @@ export default function App() {
 
       {/* tabs */}
       <div className="lf-tabs">
-        {['dashboard', 'transactions', 'upcoming', 'budgets', 'debts', 'insights'].map(t => (
+        {['dashboard', 'transactions', 'upcoming', 'budgets', 'debts', 'insights', 'advisor'].map(t => (
           <button key={t} className={`lf-tab ${tab === t ? 'active' : ''}`} onClick={() => setTab(t)}>
-            {t.charAt(0).toUpperCase() + t.slice(1)}
+            {t === 'advisor' ? '✨ Financial Advisor' : t.charAt(0).toUpperCase() + t.slice(1)}
           </button>
         ))}
       </div>
@@ -685,6 +742,25 @@ export default function App() {
           <InsightsTab
             expenseByCategory={expenseByCategory} transactions={data.transactions}
             report={report} reportLoading={reportLoading} reportError={reportError} onGenerate={generateReport}
+          />
+        )}
+        {tab === 'advisor' && (
+          <AdvisorTab
+            financialData={{
+              transactions: data.transactions,
+              debts: data.debts,
+              budgets: data.budgets,
+              recurringExpenses: data.recurringExpenses,
+              expectedIncome: data.expectedIncome,
+              monthIncome, monthExpense, netFlow, totalIOwe, totalOwedToMe,
+            }}
+            chats={data.advisorChats}
+            plans={data.advisorPlans}
+            onAddChat={addAdvisorChat}
+            onAddMessage={addAdvisorMessage}
+            onAddPlan={addAdvisorPlan}
+            onUpdatePlan={updateAdvisorPlan}
+            onDeletePlan={deleteAdvisorPlan}
           />
         )}
       </div>
@@ -1241,6 +1317,254 @@ function ExpectedIncomeRow({ item, onMarkReceived, onDelete }) {
           <button className="lf-btn-ghost" onClick={() => { onMarkReceived(item.id, Number(amount), date); }}>Confirm</button>
           <button className="lf-btn-ghost" onClick={() => setEditing(false)}>Cancel</button>
         </div>
+      )}
+    </div>
+  );
+}
+
+/* ---------- Financial Advisor Chat ---------- */
+function AdvisorTab({ financialData, chats, plans, onAddChat, onAddMessage, onAddPlan, onUpdatePlan, onDeletePlan }) {
+  const [selectedChatId, setSelectedChatId] = useState(null);
+  const [showPlanForm, setShowPlanForm] = useState(false);
+
+  const selectedChat = chats.find(c => c.id === selectedChatId);
+
+  return (
+    <div className="lf-advisor-layout">
+      {/* Sidebar: Chat list */}
+      <div className="lf-panel" style={{ margin: 0, maxHeight: 'calc(100vh - 300px)', overflowY: 'auto' }}>
+        <h3 className="lf-panel-title">Conversations</h3>
+        <button className="lf-btn" onClick={() => { const cid = uid(); onAddChat(cid, ''); setSelectedChatId(cid); }} style={{ width: '100%', marginBottom: 12 }}>
+          <Plus size={14} /> New chat
+        </button>
+        {chats.length === 0 ? (
+          <div className="lf-empty">No conversations yet. Start one to discuss your finances with the AI advisor.</div>
+        ) : (
+          chats.map(chat => (
+            <div
+              key={chat.id}
+              onClick={() => setSelectedChatId(chat.id)}
+              style={{
+                padding: '10px 8px',
+                marginBottom: 6,
+                borderRadius: 4,
+                background: selectedChatId === chat.id ? BRASS_SOFT : PAPER_DARK,
+                cursor: 'pointer',
+                fontSize: 12,
+                color: INK,
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              {chat.messages[0]?.content?.substring(0, 30) || 'New conversation'}
+            </div>
+          ))
+        )}
+      </div>
+
+      {/* Main: Chat or Plans */}
+      <div>
+        {selectedChat ? (
+          <AdvisorChatWindow
+            chat={selectedChat}
+            financialData={financialData}
+            onSendMessage={onAddMessage}
+            onCreatePlan={onAddPlan}
+          />
+        ) : (
+          <AdvisorPlansPanel plans={plans} onAdd={onAddPlan} onUpdate={onUpdatePlan} onDelete={onDeletePlan} onShowForm={() => setShowPlanForm(!showPlanForm)} showForm={showPlanForm} />
+        )}
+      </div>
+    </div>
+  );
+}
+
+function AdvisorChatWindow({ chat, financialData, onSendMessage, onCreatePlan }) {
+  const [userMessage, setUserMessage] = useState('');
+  const [loading, setLoading] = useState(false);
+  const messagesEndRef = useRef(null);
+
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [chat.messages]);
+
+  const sendMessage = async () => {
+    if (!userMessage.trim()) return;
+    
+    setLoading(true);
+    onSendMessage(chat.id, { role: 'user', content: userMessage });
+    setUserMessage('');
+
+    try {
+      // Build context: financial summary + conversation history
+      const summary = {
+        currentMonth: new Date().toISOString().slice(0, 7),
+        monthIncomeNGN: financialData.monthIncome,
+        monthExpenseNGN: financialData.monthExpense,
+        netFlowNGN: financialData.netFlow,
+        totalIOweNGN: financialData.totalIOwe,
+        totalOwedToMeNGN: financialData.totalOwedToMe,
+        recentTransactions: financialData.transactions.slice(0, 15),
+        debts: financialData.debts,
+        budgets: financialData.budgets,
+      };
+
+      const messages = [
+        ...chat.messages,
+        { role: 'user', content: userMessage }
+      ].slice(-10); // Keep last 10 messages for context
+
+      const res = await fetch('/.netlify/functions/anthropic-proxy', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model: 'claude-sonnet-4-6',
+          max_tokens: 1500,
+          system: `${ADVISOR_SYSTEM_PROMPT}\n\nFinancial Context:\n${JSON.stringify(summary, null, 2)}`,
+          messages: messages.map(m => ({ role: m.role, content: typeof m.content === 'string' ? m.content : JSON.stringify(m.content) })),
+        }),
+      });
+
+      const json = await res.json();
+      const text = (json.content || []).filter(b => b.type === 'text').map(b => b.text).join('\n');
+      if (!text) throw new Error('empty response');
+      
+      onSendMessage(chat.id, { role: 'assistant', content: text });
+    } catch (e) {
+      onSendMessage(chat.id, { role: 'assistant', content: `Sorry, I couldn't process that right now. Error: ${e.message}` });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="lf-panel" style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 300px)' }}>
+      <h3 className="lf-panel-title">Financial Advisor</h3>
+      
+      <div style={{ flex: 1, overflowY: 'auto', marginBottom: 14, paddingRight: 8 }}>
+        {chat.messages.length === 0 ? (
+          <div className="lf-empty" style={{ paddingTop: 40 }}>Start by asking about your finances, or ask me to help you create a plan.</div>
+        ) : (
+          chat.messages.map((msg, i) => (
+            <div key={i} style={{ marginBottom: 14, textAlign: msg.role === 'user' ? 'right' : 'left' }}>
+              <div
+                style={{
+                  display: 'inline-block',
+                  maxWidth: '85%',
+                  padding: '10px 12px',
+                  borderRadius: 6,
+                  background: msg.role === 'user' ? BRASS : PAPER_DARK,
+                  color: msg.role === 'user' ? 'white' : INK,
+                  fontSize: 13,
+                  lineHeight: 1.5,
+                }}
+              >
+                {msg.content}
+              </div>
+            </div>
+          ))
+        )}
+        <div ref={messagesEndRef} />
+      </div>
+
+      <div style={{ display: 'flex', gap: 8 }}>
+        <input
+          className="lf-input"
+          style={{ flex: 1 }}
+          placeholder="Ask about your finances or research topics..."
+          value={userMessage}
+          onChange={e => setUserMessage(e.target.value)}
+          onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); } }}
+          disabled={loading}
+        />
+        <button className="lf-btn" onClick={sendMessage} disabled={loading || !userMessage.trim()}>
+          {loading ? <Loader2 size={14} className="lf-spin" /> : <MessageSquare size={14} />}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function AdvisorPlansPanel({ plans, onAdd, onUpdate, onDelete, onShowForm, showForm }) {
+  const [title, setTitle] = useState('');
+  const [description, setDescription] = useState('');
+  const [steps, setSteps] = useState('');
+  const [timeline, setTimeline] = useState('');
+
+  const submit = () => {
+    if (!title) return;
+    onAdd({
+      title,
+      description,
+      steps: steps.split('\n').filter(s => s.trim()),
+      timeline,
+      completed: false,
+    });
+    setTitle('');
+    setDescription('');
+    setSteps('');
+    setTimeline('');
+    onShowForm();
+  };
+
+  return (
+    <div className="lf-panel">
+      <h3 className="lf-panel-title">Financial Plans & Goals</h3>
+      
+      {showForm ? (
+        <div style={{ marginBottom: 16, padding: 12, background: PAPER_DARK, borderRadius: 4 }}>
+          <div style={{ display: 'grid', gap: 10 }}>
+            <input className="lf-input" placeholder="Plan title" value={title} onChange={e => setTitle(e.target.value)} />
+            <input className="lf-input" placeholder="Description" value={description} onChange={e => setDescription(e.target.value)} />
+            <textarea className="lf-input" placeholder="Action steps (one per line)" value={steps} onChange={e => setSteps(e.target.value)} style={{ minHeight: 80, fontFamily: "'IBM Plex Mono', monospace", fontSize: 12 }} />
+            <input className="lf-input" placeholder="Timeline (e.g., 3 months)" value={timeline} onChange={e => setTimeline(e.target.value)} />
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button className="lf-btn" onClick={submit}><Check size={14} /> Save plan</button>
+              <button className="lf-btn-ghost" onClick={onShowForm}>Cancel</button>
+            </div>
+          </div>
+        </div>
+      ) : (
+        <button className="lf-btn" onClick={onShowForm} style={{ marginBottom: 16, width: '100%' }}>
+          <Plus size={14} /> Create new plan
+        </button>
+      )}
+
+      {plans.length === 0 ? (
+        <div className="lf-empty">No plans yet. Create one based on advice from your financial advisor.</div>
+      ) : (
+        plans.map(plan => (
+          <div key={plan.id} style={{ border: `1px solid ${HAIRLINE}`, borderRadius: 4, padding: 12, marginBottom: 12 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start' }}>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontWeight: 600, fontSize: 14 }}>{plan.title}</div>
+                {plan.description && <div style={{ fontSize: 12, color: INK_SOFT, marginTop: 4 }}>{plan.description}</div>}
+                {plan.timeline && <div style={{ fontSize: 11, color: BRASS, marginTop: 4 }}>⏱ {plan.timeline}</div>}
+              </div>
+              <div style={{ display: 'flex', gap: 6 }}>
+                <button className="lf-btn-ghost" onClick={() => onUpdate(plan.id, { completed: !plan.completed })}>
+                  {plan.completed ? '✓' : '○'}
+                </button>
+                <Trash2 size={14} style={{ color: INK_SOFT, cursor: 'pointer' }} onClick={() => onDelete(plan.id)} />
+              </div>
+            </div>
+            {plan.steps && plan.steps.length > 0 && (
+              <div style={{ marginTop: 10, paddingTop: 10, borderTop: `1px dashed ${HAIRLINE}` }}>
+                {plan.steps.map((step, i) => (
+                  <div key={i} style={{ fontSize: 12, padding: '4px 0', color: INK_SOFT, display: 'flex', gap: 8 }}>
+                    <span>{i + 1}.</span>
+                    <span>{step}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        ))
       )}
     </div>
   );
