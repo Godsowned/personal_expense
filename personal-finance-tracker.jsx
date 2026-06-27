@@ -489,7 +489,7 @@ export default function App() {
         totalOwedToMeNGN: totalOwedToMe,
         recentTransactions: data.transactions.slice(0, 25),
       };
-      const res = await fetch('https://api.anthropic.com/v1/messages', {
+      const res = await fetch('/.netlify/functions/anthropic-proxy', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -823,7 +823,7 @@ function QuickEntry({ debts, expectedIncome, recurringExpenses, onParsed }) {
         knownRecurringBills: recurringExpenses.map(r => r.label),
         note: text.trim(),
       };
-      const res = await fetch('https://api.anthropic.com/v1/messages', {
+      const res = await fetch('/.netlify/functions/anthropic-proxy', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ model: 'claude-sonnet-4-6', max_tokens: 1000, system: PARSER_PROMPT, messages: [{ role: 'user', content: JSON.stringify(context) }] }),
