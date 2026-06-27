@@ -5,7 +5,7 @@ export default async (req, context) => {
   }
 
   try {
-    const apiKey = Netlify.env.get('ANTHROPIC_API_KEY');
+    const apiKey = process.env.ANTHROPIC_API_KEY;
     if (!apiKey) {
       return new Response(
         JSON.stringify({ error: 'ANTHROPIC_API_KEY not configured in Netlify' }),
