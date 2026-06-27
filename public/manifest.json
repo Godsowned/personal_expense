@@ -1,0 +1,48 @@
+{
+  "name": "Personal Finance Tracker",
+  "short_name": "Finance Tracker",
+  "description": "Track expenses, budgets, debts, and income with AI insights powered by Claude",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#FAF6EC",
+  "theme_color": "#B8862E",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'><rect fill='%23FAF6EC' width='192' height='192'/><rect fill='%23B8862E' x='32' y='48' width='128' height='96' rx='8'/><circle fill='%23E4C98A' cx='96' cy='80' r='16'/><rect fill='%233F7150' x='48' y='112' width='28' height='20' rx='4'/><rect fill='%23A33B2B' x='108' y='112' width='36' height='20' rx='4'/></svg>",
+      "sizes": "192x192",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'><rect fill='%23FAF6EC' width='512' height='512'/><rect fill='%23B8862E' x='85' y='128' width='342' height='256' rx='21'/><circle fill='%23E4C98A' cx='256' cy='192' r='42'/><rect fill='%233F7150' x='128' y='298' width='75' height='53' rx='11'/><rect fill='%23A33B2B' x='287' y='298' width='97' height='53' rx='11'/></svg>",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 540 720'><rect fill='%23FAF6EC' width='540' height='720'/><text x='270' y='360' font-size='48' text-anchor='middle' fill='%231E2B22'>Personal Finance Tracker</text></svg>",
+      "sizes": "540x720",
+      "type": "image/svg+xml"
+    }
+  ],
+  "categories": ["finance", "productivity"],
+  "shortcuts": [
+    {
+      "name": "Add Expense",
+      "short_name": "Add Expense",
+      "description": "Quickly add a new expense",
+      "url": "/?tab=transactions",
+      "icons": [{ "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 96 96'><rect fill='%23A33B2B' width='96' height='96'/><text x='48' y='55' font-size='64' text-anchor='middle' fill='white'>-</text></svg>", "sizes": "96x96" }]
+    },
+    {
+      "name": "View Dashboard",
+      "short_name": "Dashboard",
+      "description": "View financial dashboard and insights",
+      "url": "/?tab=dashboard",
+      "icons": [{ "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 96 96'><rect fill='%233F7150' width='96' height='96'/><rect fill='%23E4C98A' x='12' y='32' width='20' height='40'/><rect fill='%23E4C98A' x='38' y='20' width='20' height='52'/><rect fill='%23E4C98A' x='64' y='28' width='20' height='44'/></svg>", "sizes": "96x96" }]
+    }
+  ]
+}
