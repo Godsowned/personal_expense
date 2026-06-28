@@ -234,7 +234,7 @@ function QuickEntry({ onParsed }) {
     setLoading(true);
     setResult(null);
     try {
-      const res = await fetch('/.netlify/functions/openrouter-proxy', {
+      const res = await fetch('/.netlify/functions/oanthropic-proxy', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ model: OPENROUTER_MODEL, max_tokens: 300, system: PARSER_PROMPT, messages: [{ role: 'user', content: text.trim() }] }),
@@ -457,7 +457,7 @@ export default function App({ onNavigate }) {
         recentMilestones: data.milestones.slice(0, 15),
         recentActivities: data.activities.slice(0, 30),
       };
-      const res = await fetch('/.netlify/functions/openrouter-proxy', {
+      const res = await fetch('/.netlify/functions/anthropic-proxy', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ model: OPENROUTER_MODEL, max_tokens: 650, system: SYSTEM_PROMPT, messages: [{ role: 'user', content: JSON.stringify(summary) }] }),

@@ -552,7 +552,7 @@ export default function App({ onNavigate }) {
         totalOwedToMeNGN: totalOwedToMe,
         recentTransactions: data.transactions.slice(0, 25),
       };
-      const res = await fetch('/.netlify/functions/openrouter-proxy', {
+      const res = await fetch('/.netlify/functions/anthropic-proxy', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -915,7 +915,7 @@ function QuickEntry({ debts, expectedIncome, recurringExpenses, onParsed }) {
         knownRecurringBills: recurringExpenses.map(r => r.label),
         note: text.trim(),
       };
-      const res = await fetch('/.netlify/functions/openrouter-proxy', {
+      const res = await fetch('/.netlify/functions/anthropic-proxy', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ model: OPENROUTER_MODEL, max_tokens: 300, system: PARSER_PROMPT, messages: [{ role: 'user', content: JSON.stringify(context) }] }),
@@ -1436,7 +1436,7 @@ function AdvisorChatWindow({ chat, financialData, onSendMessage, onCreatePlan })
         { role: 'user', content: userMessage }
       ].slice(-10); // Keep last 10 messages for context
 
-      const res = await fetch('/.netlify/functions/openrouter-proxy', {
+      const res = await fetch('/.netlify/functions/anthropic-proxy', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
