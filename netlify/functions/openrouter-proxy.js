@@ -1,29 +1,39 @@
-export default async (req, context) => {
-  // Only accept POST requests
+const OPENROUTER_MODEL = 'nvidia/nemotron-3-ultra-550b-a55b:free';
+
+export default async (req) => {
   if (req.method !== 'POST') {
     return new Response('Method Not Allowed', { status: 405 });
   }
 
   try {
-    const apiKey = process.env.ANTHROPIC_API_KEY;
+    const apiKey = process.env.OPENROUTER_API_KEY;
     if (!apiKey) {
       return new Response(
-        JSON.stringify({ error: 'ANTHROPIC_API_KEY not configured in Netlify' }),
+        JSON.stringify({ error: 'OPENROUTER_API_KEY not configured in Netlify' }),
         { status: 500, headers: { 'Content-Type': 'application/json' } }
       );
     }
 
     const body = await req.json();
+    const messages = [
+      ...(body.system ? [{ role: 'system', content: body.system }] : []),
+      ...(body.messages || []),
+    ];
 
-    // Call Anthropic API from backend (no CORS issues)
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
+    const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
       method: 'POST',
       headers: {
+        Authorization: `Bearer ${apiKey}`,
         'Content-Type': 'application/json',
-        'x-api-key': apiKey,
-        'anthropic-version': '2023-06-01',
+        'HTTP-Referer': req.headers.get('origin') || 'http://localhost:8888',
+        'X-Title': 'Personal Expense and Development Tracker',
       },
-      body: JSON.stringify(body),
+      body: JSON.stringify({
+        model: body.model || OPENROUTER_MODEL,
+        messages,
+        max_tokens: body.max_tokens || body.max_completion_tokens || 1000,
+        temperature: body.temperature ?? 0.3,
+      }),
     });
 
     const data = await res.json();

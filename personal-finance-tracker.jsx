@@ -132,8 +132,13 @@ Rules:
 - If the note is genuinely ambiguous (no clear match, missing required info), use action "unclear" and put a short, specific one-sentence question in "clarification".
 - Never invent a targetName that isn't a close match to something in the provided context list.`;
 
+const OPENROUTER_MODEL = 'nvidia/nemotron-3-ultra-550b-a55b:free';
+
 /* ---------- helpers ---------- */
 function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 8); }
+function aiText(json) {
+  return json?.choices?.[0]?.message?.content || '';
+}
 
 function formatNaira(amount) {
   const n = Number(amount) || 0;
@@ -185,7 +190,7 @@ function ReportBody({ text }) {
 }
 
 /* ---------- main component ---------- */
-export default function App() {
+export default function App({ onNavigate }) {
   const [data, setData] = useState(EMPTY_DATA);
   const [loaded, setLoaded] = useState(false);
   const [tab, setTab] = useState('dashboard');
@@ -543,18 +548,18 @@ export default function App() {
         totalOwedToMeNGN: totalOwedToMe,
         recentTransactions: data.transactions.slice(0, 25),
       };
-      const res = await fetch('/.netlify/functions/anthropic-proxy', {
+      const res = await fetch('/.netlify/functions/openrouter-proxy', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          model: 'claude-sonnet-4-6',
+          model: OPENROUTER_MODEL,
           max_tokens: 1000,
           system: SYSTEM_PROMPT,
           messages: [{ role: 'user', content: JSON.stringify(summary) }],
         }),
       });
       const json = await res.json();
-      const text = (json.content || []).filter(b => b.type === 'text').map(b => b.text).join('\n');
+      const text = aiText(json);
       if (!text) throw new Error('empty response');
       setReport(text);
     } catch (e) {
@@ -639,6 +644,11 @@ export default function App() {
           <div>
             <div className="lf-net-label">Net Position</div>
             <div className="lf-net-figure lf-mono" style={{ color: netPosition >= 0 ? FOREST : RUST }}>{formatNaira(netPosition)}</div>
+            {onNavigate && (
+              <button className="lf-btn-ghost" style={{ marginTop: 8 }} onClick={() => onNavigate('development')}>
+                Personal development
+              </button>
+            )}
           </div>
         </div>
         {trendSpark.length > 1 && (
@@ -882,7 +892,7 @@ function Dashboard({ monthIncome, monthExpense, netFlow, totalIOwe, totalOwedToM
   );
 }
 
-/* ---------- Quick Entry (natural language, calls Claude to parse) ---------- */
+/* ---------- Quick Entry (natural language) ---------- */
 function QuickEntry({ debts, expectedIncome, recurringExpenses, onParsed }) {
   const [text, setText] = useState('');
   const [loading, setLoading] = useState(false);
@@ -899,13 +909,13 @@ function QuickEntry({ debts, expectedIncome, recurringExpenses, onParsed }) {
         knownRecurringBills: recurringExpenses.map(r => r.label),
         note: text.trim(),
       };
-      const res = await fetch('/.netlify/functions/anthropic-proxy', {
+      const res = await fetch('/.netlify/functions/openrouter-proxy', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ model: 'claude-sonnet-4-6', max_tokens: 1000, system: PARSER_PROMPT, messages: [{ role: 'user', content: JSON.stringify(context) }] }),
+        body: JSON.stringify({ model: OPENROUTER_MODEL, max_tokens: 1000, system: PARSER_PROMPT, messages: [{ role: 'user', content: JSON.stringify(context) }] }),
       });
       const json = await res.json();
-      const raw = (json.content || []).filter(b => b.type === 'text').map(b => b.text).join('').trim();
+      const raw = aiText(json).trim();
       const cleaned = raw.replace(/^```json|```$/g, '').trim();
       const parsed = JSON.parse(cleaned);
       const outcome = onParsed(parsed);
@@ -1419,11 +1429,11 @@ function AdvisorChatWindow({ chat, financialData, onSendMessage, onCreatePlan })
         { role: 'user', content: userMessage }
       ].slice(-10); // Keep last 10 messages for context
 
-      const res = await fetch('/.netlify/functions/anthropic-proxy', {
+      const res = await fetch('/.netlify/functions/openrouter-proxy', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          model: 'claude-sonnet-4-6',
+          model: OPENROUTER_MODEL,
           max_tokens: 1500,
           system: `${ADVISOR_SYSTEM_PROMPT}\n\nFinancial Context:\n${JSON.stringify(summary, null, 2)}`,
           messages: messages.map(m => ({ role: m.role, content: typeof m.content === 'string' ? m.content : JSON.stringify(m.content) })),
@@ -1431,7 +1441,7 @@ function AdvisorChatWindow({ chat, financialData, onSendMessage, onCreatePlan })
       });
 
       const json = await res.json();
-      const text = (json.content || []).filter(b => b.type === 'text').map(b => b.text).join('\n');
+      const text = aiText(json);
       if (!text) throw new Error('empty response');
       
       onSendMessage(chat.id, { role: 'assistant', content: text });

@@ -45,7 +45,7 @@ self.addEventListener('fetch', (event) => {
     fetch(event.request)
       .then((response) => {
         // Don't cache third-party API calls
-        if (event.request.url.includes('api.anthropic.com') || 
+        if (event.request.url.includes('openrouter.ai') ||
             event.request.url.includes('supabase.co') ||
             event.request.url.includes('.netlify/functions')) {
           return response;
@@ -64,5 +64,16 @@ self.addEventListener('fetch', (event) => {
         // Return cached version if network fails
         return caches.match(event.request);
       })
+  );
+});
+
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  event.waitUntil(
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clients) => {
+      const existing = clients.find(client => client.url.includes(self.location.origin));
+      if (existing) return existing.focus();
+      return self.clients.openWindow('/#development');
+    })
   );
 });
