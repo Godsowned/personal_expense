@@ -105,7 +105,7 @@ Rules:
 - If no date is mentioned, leave "date" null (the app fills in today).
 - If the note is genuinely ambiguous, use action "unclear" with a short, specific one-sentence question in "clarification".`;
 
-const ANTHROPIC_MODEL = 'claude-sonnet-4-20250514';
+const ANTHROPIC_MODEL = 'claude-3-5-sonnet-20241022';
 
 /* ---------- helpers ---------- */
 function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 8); }
