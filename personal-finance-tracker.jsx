@@ -132,7 +132,7 @@ Rules:
 - If the note is genuinely ambiguous (no clear match, missing required info), use action "unclear" and put a short, specific one-sentence question in "clarification".
 - Never invent a targetName that isn't a close match to something in the provided context list.`;
 
-const ANTHROPIC_MODEL = 'claude-3-5-sonnet-20241022';
+const ANTHROPIC_MODEL = 'claude-3-5-haiku-latest';
 
 /* ---------- helpers ---------- */
 function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 8); }
@@ -320,7 +320,7 @@ export default function App({ onNavigate }) {
     persist({ ...data, advisorChats: [newChat, ...data.advisorChats] });
     return chatId;
   };
-  
+
   const addAdvisorMessage = (chatId, message) => {
     const chats = data.advisorChats.map(c => {
       if (c.id === chatId) {
@@ -1412,7 +1412,7 @@ function AdvisorChatWindow({ chat, financialData, onSendMessage, onCreatePlan })
 
   const sendMessage = async () => {
     if (!userMessage.trim()) return;
-    
+
     setLoading(true);
     onSendMessage(chat.id, { role: 'user', content: userMessage });
     setUserMessage('');
@@ -1451,7 +1451,7 @@ function AdvisorChatWindow({ chat, financialData, onSendMessage, onCreatePlan })
       if (!res.ok) throw new Error(json.error || `AI request failed (${res.status})`);
       const text = aiText(json);
       if (!text) throw new Error('empty response');
-      
+
       onSendMessage(chat.id, { role: 'assistant', content: text });
     } catch (e) {
       onSendMessage(chat.id, { role: 'assistant', content: `Sorry, I couldn't process that right now. Error: ${e.message}` });
@@ -1463,7 +1463,7 @@ function AdvisorChatWindow({ chat, financialData, onSendMessage, onCreatePlan })
   return (
     <div className="lf-panel" style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 300px)' }}>
       <h3 className="lf-panel-title">Financial Advisor</h3>
-      
+
       <div style={{ flex: 1, overflowY: 'auto', marginBottom: 14, paddingRight: 8 }}>
         {chat.messages.length === 0 ? (
           <div className="lf-empty" style={{ paddingTop: 40 }}>Start by asking about your finances, or ask me to help you create a plan.</div>
@@ -1533,7 +1533,7 @@ function AdvisorPlansPanel({ plans, onAdd, onUpdate, onDelete, onShowForm, showF
   return (
     <div className="lf-panel">
       <h3 className="lf-panel-title">Financial Plans & Goals</h3>
-      
+
       {showForm ? (
         <div style={{ marginBottom: 16, padding: 12, background: PAPER_DARK, borderRadius: 4 }}>
           <div style={{ display: 'grid', gap: 10 }}>
