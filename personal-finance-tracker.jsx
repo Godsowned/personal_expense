@@ -141,7 +141,7 @@ function aiText(json) {
     const message = typeof json.error === 'string' ? json.error : json.error.message;
     throw new Error(message || 'AI request failed');
   }
-  return json?.choices?.[0]?.message?.content || '';
+  return json?.content?.[0]?.text || '';
 }
 
 function formatNaira(amount) {
@@ -556,7 +556,7 @@ export default function App({ onNavigate }) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          model: OPENROUTER_MODEL,
+          model: ANTHROPIC_MODEL,
           max_tokens: 650,
           system: SYSTEM_PROMPT,
           messages: [{ role: 'user', content: JSON.stringify(summary) }],
@@ -918,7 +918,7 @@ function QuickEntry({ debts, expectedIncome, recurringExpenses, onParsed }) {
       const res = await fetch('/.netlify/functions/anthropic-proxy', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ model: OPENROUTER_MODEL, max_tokens: 300, system: PARSER_PROMPT, messages: [{ role: 'user', content: JSON.stringify(context) }] }),
+        body: JSON.stringify({ model: ANTHROPIC_MODEL, max_tokens: 300, system: PARSER_PROMPT, messages: [{ role: 'user', content: JSON.stringify(context) }] }),
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || `AI request failed (${res.status})`);
@@ -1440,7 +1440,7 @@ function AdvisorChatWindow({ chat, financialData, onSendMessage, onCreatePlan })
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          model: OPENROUTER_MODEL,
+          model: ANTHROPIC_MODEL,
           max_tokens: 750,
           system: `${ADVISOR_SYSTEM_PROMPT}\n\nFinancial Context:\n${JSON.stringify(summary, null, 2)}`,
           messages: messages.map(m => ({ role: m.role, content: typeof m.content === 'string' ? m.content : JSON.stringify(m.content) })),

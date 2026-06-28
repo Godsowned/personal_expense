@@ -114,7 +114,7 @@ function aiText(json) {
     const message = typeof json.error === 'string' ? json.error : json.error.message;
     throw new Error(message || 'AI request failed');
   }
-  return json?.choices?.[0]?.message?.content || '';
+  return json?.content?.[0]?.text || '';
 }
 function todayStr() { return new Date().toISOString().slice(0, 10); }
 function dateNDaysAgo(n) { const d = new Date(); d.setDate(d.getDate() - n); return d.toISOString().slice(0, 10); }
@@ -234,10 +234,10 @@ function QuickEntry({ onParsed }) {
     setLoading(true);
     setResult(null);
     try {
-      const res = await fetch('/.netlify/functions/oanthropic-proxy', {
+      const res = await fetch('/.netlify/functions/anthropic-proxy', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ model: OPENROUTER_MODEL, max_tokens: 300, system: PARSER_PROMPT, messages: [{ role: 'user', content: text.trim() }] }),
+        body: JSON.stringify({ model: ANTHROPIC_MODEL, max_tokens: 300, system: PARSER_PROMPT, messages: [{ role: 'user', content: text.trim() }] }),
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || `AI request failed (${res.status})`);
@@ -460,7 +460,7 @@ export default function App({ onNavigate }) {
       const res = await fetch('/.netlify/functions/anthropic-proxy', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ model: OPENROUTER_MODEL, max_tokens: 650, system: SYSTEM_PROMPT, messages: [{ role: 'user', content: JSON.stringify(summary) }] }),
+        body: JSON.stringify({ model: ANTHROPIC_MODEL, max_tokens: 650, system: SYSTEM_PROMPT, messages: [{ role: 'user', content: JSON.stringify(summary) }] }),
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || `AI request failed (${res.status})`);
