@@ -137,6 +137,10 @@ const OPENROUTER_MODEL = 'nvidia/nemotron-3-ultra-550b-a55b:free';
 /* ---------- helpers ---------- */
 function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 8); }
 function aiText(json) {
+  if (json?.error) {
+    const message = typeof json.error === 'string' ? json.error : json.error.message;
+    throw new Error(message || 'AI request failed');
+  }
   return json?.choices?.[0]?.message?.content || '';
 }
 
@@ -553,12 +557,13 @@ export default function App({ onNavigate }) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           model: OPENROUTER_MODEL,
-          max_tokens: 1000,
+          max_tokens: 650,
           system: SYSTEM_PROMPT,
           messages: [{ role: 'user', content: JSON.stringify(summary) }],
         }),
       });
       const json = await res.json();
+      if (!res.ok) throw new Error(json.error || `AI request failed (${res.status})`);
       const text = aiText(json);
       if (!text) throw new Error('empty response');
       setReport(text);
@@ -704,7 +709,7 @@ export default function App({ onNavigate }) {
 
       {/* tabs */}
       <div className="lf-tabs">
-        {['dashboard', 'transactions', 'upcoming', 'budgets', 'debts', 'insights', 'advisor'].map(t => (
+        {['dashboard', 'transactions', 'upcoming', 'budgets', 'debts', 'insights'].map(t => (
           <button key={t} className={`lf-tab ${tab === t ? 'active' : ''}`} onClick={() => setTab(t)}>
             {t === 'advisor' ? '✨ Financial Advisor' : t.charAt(0).toUpperCase() + t.slice(1)}
           </button>
@@ -754,6 +759,7 @@ export default function App({ onNavigate }) {
             report={report} reportLoading={reportLoading} reportError={reportError} onGenerate={generateReport}
           />
         )}
+        {/* Financial Advisor is hidden for now. Insights and recommendations remain available.
         {tab === 'advisor' && (
           <AdvisorTab
             financialData={{
@@ -772,7 +778,7 @@ export default function App({ onNavigate }) {
             onUpdatePlan={updateAdvisorPlan}
             onDeletePlan={deleteAdvisorPlan}
           />
-        )}
+        )} */}
       </div>
     </div>
   );
@@ -912,9 +918,10 @@ function QuickEntry({ debts, expectedIncome, recurringExpenses, onParsed }) {
       const res = await fetch('/.netlify/functions/openrouter-proxy', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ model: OPENROUTER_MODEL, max_tokens: 1000, system: PARSER_PROMPT, messages: [{ role: 'user', content: JSON.stringify(context) }] }),
+        body: JSON.stringify({ model: OPENROUTER_MODEL, max_tokens: 300, system: PARSER_PROMPT, messages: [{ role: 'user', content: JSON.stringify(context) }] }),
       });
       const json = await res.json();
+      if (!res.ok) throw new Error(json.error || `AI request failed (${res.status})`);
       const raw = aiText(json).trim();
       const cleaned = raw.replace(/^```json|```$/g, '').trim();
       const parsed = JSON.parse(cleaned);
@@ -1434,13 +1441,14 @@ function AdvisorChatWindow({ chat, financialData, onSendMessage, onCreatePlan })
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           model: OPENROUTER_MODEL,
-          max_tokens: 1500,
+          max_tokens: 750,
           system: `${ADVISOR_SYSTEM_PROMPT}\n\nFinancial Context:\n${JSON.stringify(summary, null, 2)}`,
           messages: messages.map(m => ({ role: m.role, content: typeof m.content === 'string' ? m.content : JSON.stringify(m.content) })),
         }),
       });
 
       const json = await res.json();
+      if (!res.ok) throw new Error(json.error || `AI request failed (${res.status})`);
       const text = aiText(json);
       if (!text) throw new Error('empty response');
       

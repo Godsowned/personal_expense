@@ -1,5 +1,9 @@
 const OPENROUTER_MODEL = 'nvidia/nemotron-3-ultra-550b-a55b:free';
 
+export const config = {
+  timeout: 60,
+};
+
 export default async (req) => {
   if (req.method !== 'POST') {
     return new Response('Method Not Allowed', { status: 405 });
@@ -25,18 +29,23 @@ export default async (req) => {
       headers: {
         Authorization: `Bearer ${apiKey}`,
         'Content-Type': 'application/json',
-        'HTTP-Referer': req.headers.get('origin') || 'http://localhost:8888',
+        'HTTP-Referer': req.headers.get('origin') || 'https://philexpense.netlify.app',
         'X-Title': 'Personal Expense and Development Tracker',
       },
       body: JSON.stringify({
         model: body.model || OPENROUTER_MODEL,
         messages,
-        max_tokens: body.max_tokens || body.max_completion_tokens || 1000,
-        temperature: body.temperature ?? 0.3,
+        max_tokens: Math.min(Number(body.max_tokens || body.max_completion_tokens || 600), 900),
+        temperature: body.temperature ?? 0.2,
+        stream: false,
+        provider: {
+          allow_fallbacks: true,
+          sort: 'throughput',
+        },
       }),
     });
 
-    const data = await res.json();
+    const data = await res.json().catch(() => ({ error: 'OpenRouter returned a non-JSON response' }));
 
     if (!res.ok) {
       return new Response(JSON.stringify(data), {
