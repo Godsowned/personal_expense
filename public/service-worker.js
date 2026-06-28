@@ -1,4 +1,5 @@
-const CACHE_NAME = 'personal-finance-v1';
+const CACHE_NAME = 'personal-finance-v2';
+
 const urlsToCache = [
   '/',
   '/index.html',
@@ -8,72 +9,101 @@ const urlsToCache = [
 // Install Service Worker
 self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => {
-      return cache.addAll(urlsToCache).catch(() => {
-        // It's okay if some resources fail to cache
-        return Promise.resolve();
-      });
+    caches.open(CACHE_NAME).then(async (cache) => {
+      try {
+        await cache.addAll(urlsToCache);
+      } catch (err) {
+        // Ignore cache failures during installation
+        console.warn('Some assets could not be cached.', err);
+      }
     })
   );
+
   self.skipWaiting();
 });
 
 // Activate Service Worker
 self.addEventListener('activate', (event) => {
   event.waitUntil(
-    caches.keys().then((cacheNames) => {
-      return Promise.all(
+    caches.keys().then((cacheNames) =>
+      Promise.all(
         cacheNames.map((cacheName) => {
           if (cacheName !== CACHE_NAME) {
             return caches.delete(cacheName);
           }
         })
-      );
-    })
+      )
+    )
   );
+
   self.clients.claim();
 });
 
-// Fetch event - Network first, fallback to cache
+// Fetch - Network First
 self.addEventListener('fetch', (event) => {
-  // Skip non-GET requests and third-party APIs
   if (event.request.method !== 'GET') {
+    return;
+  }
+
+  const url = new URL(event.request.url);
+
+  // Never cache API requests
+  if (
+    url.hostname.includes('api.anthropic.com') ||
+    url.hostname.includes('supabase.co') ||
+    url.pathname.startsWith('/.netlify/functions/')
+  ) {
     return;
   }
 
   event.respondWith(
     fetch(event.request)
       .then((response) => {
-        // Don't cache third-party API calls
-        if (event.request.url.includes('openrouter.ai') ||
-            event.request.url.includes('supabase.co') ||
-            event.request.url.includes('.netlify/functions')) {
-          return response;
-        }
-
-        // Cache successful responses
-        if (response && response.status === 200) {
+        // Cache only successful basic responses
+        if (
+          response &&
+          response.status === 200 &&
+          response.type === 'basic'
+        ) {
           const responseToCache = response.clone();
+
           caches.open(CACHE_NAME).then((cache) => {
             cache.put(event.request, responseToCache);
           });
         }
+
         return response;
       })
-      .catch(() => {
-        // Return cached version if network fails
-        return caches.match(event.request);
+      .catch(async () => {
+        const cached = await caches.match(event.request, {
+          ignoreSearch: true,
+        });
+
+        return cached || Response.error();
       })
   );
 });
 
+// Notification Click
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
+
   event.waitUntil(
-    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clients) => {
-      const existing = clients.find(client => client.url.includes(self.location.origin));
-      if (existing) return existing.focus();
-      return self.clients.openWindow('/#development');
-    })
+    self.clients
+      .matchAll({
+        type: 'window',
+        includeUncontrolled: true,
+      })
+      .then((clients) => {
+        const existing = clients.find((client) =>
+          client.url.startsWith(self.location.origin)
+        );
+
+        if (existing) {
+          return existing.focus();
+        }
+
+        return self.clients.openWindow('/#development');
+      })
   );
 });
