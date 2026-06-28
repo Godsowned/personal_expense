@@ -132,7 +132,7 @@ Rules:
 - If the note is genuinely ambiguous (no clear match, missing required info), use action "unclear" and put a short, specific one-sentence question in "clarification".
 - Never invent a targetName that isn't a close match to something in the provided context list.`;
 
-const ANTHROPIC_MODEL = 'claude-3-5-haiku-latest';
+const ANTHROPIC_MODEL = 'claude-sonnet-4-6';
 
 /* ---------- helpers ---------- */
 function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 8); }
